@@ -137,3 +137,24 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Foundry
+cache_forge/
+out_forge/
+cache/
+out/
+artifacts/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Build outputs
+build/
+
+# Misc
+.turbo/
+pnpm-lock.yaml
