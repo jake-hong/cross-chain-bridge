@@ -158,3 +158,5 @@ build/
 # Misc
 .turbo/
 pnpm-lock.yaml
+
+CLAUDE.md
