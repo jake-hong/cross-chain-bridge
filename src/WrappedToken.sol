@@ -65,6 +65,33 @@ contract WrappedToken is ERC20, Ownable, Pausable {
         emit TokensBurned(from, amount);
     }
 
+    function burnAndBridge(
+        uint256 amount,
+        uint256 destinationChainId,
+        address destinationAddress,
+        address originalToken
+    ) external whenNotPaused {
+        require(amount > 0, "Amount must be greater than 0");
+        require(destinationAddress != address(0), "Invalid destination address");
+
+        // 토큰 소각
+        _burn(msg.sender, amount);
+        emit TokensBurned(msg.sender, amount);
+
+        // Bridge에 크로스체인 전송 알림
+        (bool success,) = bridge.call(
+            abi.encodeWithSignature(
+                "handleBurn(address,address,uint256,uint256,address)",
+                originalToken,
+                msg.sender,
+                amount,
+                destinationChainId,
+                destinationAddress
+            )
+        );
+        require(success, "Bridge notification failed");
+    }
+
     // ============ Admin Functions ============
 
     function setBridge(address newBridge) external onlyOwner {

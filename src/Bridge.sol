@@ -19,12 +19,14 @@ contract Bridge {
 
     // 체인 정보
     uint256 public chainId; // 현재 체인 ID (Ethereum=1, Polygon=137 등)
+    bool public isOriginChain; // 원본 체인인지 여부
 
     // 관리자
     address public owner;
 
     // 토큰 잠금 관리
     mapping(address => uint256) public lockedBalances; // 토큰별 잠긴 총량
+    mapping(address => address) public wrappedTokens; // 원본 토큰 → 래핑 토큰 매핑
 
     // 상수
     uint256 public constant MIN_VALIDATORS = 1;
@@ -48,9 +50,11 @@ contract Bridge {
         bytes32 indexed transactionId
     );
 
+    event TokensMinted(address indexed token, address indexed user, uint256 amount, bytes32 indexed transactionId);
     event ValidatorAdded(address indexed validator);
     event ValidatorRemoved(address indexed validator);
     event RequiredSignaturesChanged(uint256 oldRequired, uint256 newRequired);
+    event WrappedTokenSet(address indexed originalToken, address indexed wrappedToken);
 
     // ============ Modifiers ============
 
@@ -61,9 +65,10 @@ contract Bridge {
 
     // ============ Constructor ============
 
-    constructor(uint256 _chainId, uint256 _requiredSignatures) {
+    constructor(uint256 _chainId, uint256 _requiredSignatures, bool _isOriginChain) {
         chainId = _chainId;
         requiredSignatures = _requiredSignatures;
+        isOriginChain = _isOriginChain;
         owner = msg.sender;
     }
 
@@ -78,9 +83,9 @@ contract Bridge {
         require(amount > 0, "Amount must be greater than 0");
         require(destinationAddress != address(0), "Invalid destination address");
         require(destinationChainId != chainId, "Cannot bridge to same chain");
+        require(isOriginChain, "Only available on origin chain");
 
-        // ERC20 토큰을 이 컨트랙트로 전송
-        // 실제 구현시에는 SafeERC20 사용 예정
+        // 원본 체인에서만 실행: 토큰을 Bridge에 잠금
         (bool success,) = token.call(
             abi.encodeWithSignature("transferFrom(address,address,uint256)",
                 msg.sender, address(this), amount)
@@ -112,7 +117,6 @@ contract Bridge {
     ) external {
         require(!processedTransactions[transactionId], "Transaction already processed");
         require(signatures.length >= requiredSignatures, "Insufficient signatures");
-        require(lockedBalances[token] >= amount, "Insufficient locked balance");
 
         // 서명 검증을 위한 메시지 생성
         bytes32 message = keccak256(abi.encodePacked(
@@ -126,15 +130,70 @@ contract Bridge {
         require(_verifySignatures(message, signatures), "Invalid signatures");
 
         processedTransactions[transactionId] = true;
-        lockedBalances[token] -= amount;
 
-        // 토큰을 사용자에게 전송
-        (bool success,) = token.call(
-            abi.encodeWithSignature("transfer(address,uint256)", user, amount)
+        if (isOriginChain) {
+            // 원본 체인: 잠긴 토큰을 해제
+            require(lockedBalances[token] >= amount, "Insufficient locked balance");
+            lockedBalances[token] -= amount;
+
+            (bool success,) = token.call(
+                abi.encodeWithSignature("transfer(address,uint256)", user, amount)
+            );
+            require(success, "Token transfer failed");
+
+            emit TokensUnlocked(token, user, amount, transactionId);
+        } else {
+            // 목적지 체인: 래핑된 토큰을 발행
+            address wrappedToken = wrappedTokens[token];
+            require(wrappedToken != address(0), "Wrapped token not found");
+
+            (bool success,) = wrappedToken.call(
+                abi.encodeWithSignature("mint(address,uint256)", user, amount)
+            );
+            require(success, "Token mint failed");
+
+            emit TokensMinted(token, user, amount, transactionId);
+        }
+    }
+
+    // ============ Burn Handler ============
+
+    function handleBurn(
+        address originalToken,
+        address user,
+        uint256 amount,
+        uint256 destinationChainId,
+        address destinationAddress
+    ) external {
+        require(!isOriginChain, "Only available on destination chain");
+
+        // 래핑된 토큰에서만 호출되어야 함
+        address wrappedToken = wrappedTokens[originalToken];
+        require(msg.sender == wrappedToken, "Only wrapped token can call this");
+
+        uint256 userNonce = nonces[user];
+        nonces[user]++;
+
+        emit TokensLocked(
+            originalToken,
+            user,
+            amount,
+            destinationChainId,
+            destinationAddress,
+            userNonce
         );
-        require(success, "Token transfer failed");
+    }
 
-        emit TokensUnlocked(token, user, amount, transactionId);
+    // ============ Token Management ============
+
+    function setWrappedToken(address originalToken, address wrappedToken) external onlyOwner {
+        require(originalToken != address(0), "Invalid original token address");
+        require(wrappedToken != address(0), "Invalid wrapped token address");
+        require(!isOriginChain, "Only available on destination chain");
+
+        wrappedTokens[originalToken] = wrappedToken;
+
+        emit WrappedTokenSet(originalToken, wrappedToken);
     }
 
     // ============ Validator Management ============
