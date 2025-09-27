@@ -48,6 +48,10 @@ contract Bridge {
         bytes32 indexed transactionId
     );
 
+    event ValidatorAdded(address indexed validator);
+    event ValidatorRemoved(address indexed validator);
+    event RequiredSignaturesChanged(uint256 oldRequired, uint256 newRequired);
+
     // ============ Modifiers ============
 
     modifier onlyOwner() {
@@ -103,10 +107,23 @@ contract Bridge {
         address token,
         address user,
         uint256 amount,
-        bytes32 transactionId
-    ) external onlyOwner {
+        bytes32 transactionId,
+        bytes[] calldata signatures
+    ) external {
         require(!processedTransactions[transactionId], "Transaction already processed");
+        require(signatures.length >= requiredSignatures, "Insufficient signatures");
         require(lockedBalances[token] >= amount, "Insufficient locked balance");
+
+        // 서명 검증을 위한 메시지 생성
+        bytes32 message = keccak256(abi.encodePacked(
+            token,
+            user,
+            amount,
+            transactionId,
+            chainId
+        ));
+
+        require(_verifySignatures(message, signatures), "Invalid signatures");
 
         processedTransactions[transactionId] = true;
         lockedBalances[token] -= amount;
@@ -118,6 +135,93 @@ contract Bridge {
         require(success, "Token transfer failed");
 
         emit TokensUnlocked(token, user, amount, transactionId);
+    }
+
+    // ============ Validator Management ============
+
+    function addValidator(address validator) external onlyOwner {
+        require(validator != address(0), "Invalid validator address");
+        require(!validators[validator], "Validator already exists");
+        require(validatorCount < MAX_VALIDATORS, "Too many validators");
+
+        validators[validator] = true;
+        validatorCount++;
+
+        emit ValidatorAdded(validator);
+    }
+
+    function removeValidator(address validator) external onlyOwner {
+        require(validators[validator], "Validator does not exist");
+        require(validatorCount > MIN_VALIDATORS, "Cannot remove last validator");
+        require(validatorCount - 1 >= requiredSignatures, "Would break required signatures");
+
+        validators[validator] = false;
+        validatorCount--;
+
+        emit ValidatorRemoved(validator);
+    }
+
+    function setRequiredSignatures(uint256 _requiredSignatures) external onlyOwner {
+        require(_requiredSignatures > 0, "Required signatures must be > 0");
+        require(_requiredSignatures <= validatorCount, "Required signatures too high");
+
+        uint256 oldRequired = requiredSignatures;
+        requiredSignatures = _requiredSignatures;
+
+        emit RequiredSignaturesChanged(oldRequired, _requiredSignatures);
+    }
+
+    // ============ Internal Functions ============
+
+    function _verifySignatures(bytes32 message, bytes[] calldata signatures) internal view returns (bool) {
+        bytes32 ethSignedMessage = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message));
+
+        address[] memory signers = new address[](signatures.length);
+        uint256 validSignatures = 0;
+
+        for (uint256 i = 0; i < signatures.length; i++) {
+            address signer = _recoverSigner(ethSignedMessage, signatures[i]);
+
+            if (validators[signer]) {
+                // 중복 서명 체크
+                bool duplicate = false;
+                for (uint256 j = 0; j < validSignatures; j++) {
+                    if (signers[j] == signer) {
+                        duplicate = true;
+                        break;
+                    }
+                }
+
+                if (!duplicate) {
+                    signers[validSignatures] = signer;
+                    validSignatures++;
+                }
+            }
+        }
+
+        return validSignatures >= requiredSignatures;
+    }
+
+    function _recoverSigner(bytes32 message, bytes memory signature) internal pure returns (address) {
+        require(signature.length == 65, "Invalid signature length");
+
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+
+        assembly {
+            r := mload(add(signature, 32))
+            s := mload(add(signature, 64))
+            v := byte(0, mload(add(signature, 96)))
+        }
+
+        if (v < 27) {
+            v += 27;
+        }
+
+        require(v == 27 || v == 28, "Invalid signature v value");
+
+        return ecrecover(message, v, r, s);
     }
 
     // ============ View Functions ============
@@ -132,5 +236,9 @@ contract Bridge {
 
     function getUserNonce(address user) external view returns (uint256) {
         return nonces[user];
+    }
+
+    function isValidator(address account) external view returns (bool) {
+        return validators[account];
     }
 }
