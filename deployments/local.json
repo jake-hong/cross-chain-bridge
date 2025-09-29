@@ -1,0 +1,24 @@
+{
+  "ethereum": {
+    "chainId": 1337,
+    "rpcUrl": "http://localhost:8545",
+    "contracts": {
+      "mockToken": "Check broadcast logs",
+      "bridge": "Check broadcast logs"
+    }
+  },
+  "polygon": {
+    "chainId": 1338,
+    "rpcUrl": "http://localhost:8546",
+    "contracts": {
+      "bridge": "Check broadcast logs",
+      "wrappedToken": "Check broadcast logs"
+    }
+  },
+  "validators": [
+    "0xFFcf8FDEE72ac11b5c542428B35EEF5769C409f0",
+    "0x22d491Bde2303f2f43325b2108D26f1eAbA1e32b",
+    "0xE11BA2b4D45Eaed5996Cd0823791E0C93114882d"
+  ],
+  "requiredSignatures": 2
+}
