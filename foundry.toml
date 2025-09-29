@@ -6,4 +6,14 @@ remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/"
 ]
 
+# Local networks
+[rpc_endpoints]
+ethereum_local = "http://localhost:8545"
+polygon_local = "http://localhost:8546"
+
+# Network configurations
+[etherscan]
+ethereum_local = { key = "dummy", url = "http://localhost:8545" }
+polygon_local = { key = "dummy", url = "http://localhost:8546" }
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
