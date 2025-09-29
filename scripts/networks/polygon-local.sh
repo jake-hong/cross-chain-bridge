@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🟣 Starting Local Polygon Network (Ganache)"
+echo "Starting Local Polygon Network (Ganache)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 ganache \
@@ -17,14 +17,14 @@ ganache \
   --deterministic
 
 echo ""
-echo "✅ Polygon Local Network Information:"
+echo "Polygon Local Network Information:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🌐 Network Name: Polygon Local"
-echo "🔗 Chain ID: 1338"
-echo "🌍 RPC URL: http://localhost:8546"
-echo "💰 Native Token: MATIC"
+echo "Network Name: Polygon Local"
+echo "Chain ID: 1338"
+echo "RPC URL: http://localhost:8546"
+echo "Native Token: MATIC"
 echo ""
-echo "👤 Test Accounts (Same as Ethereum for convenience):"
+echo "Test Accounts (Same as Ethereum for convenience):"
 echo "   Account #0: 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 (1000 MATIC)"
 echo "   Account #1: 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 (1000 MATIC)"
 echo "   Account #2: 0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc (1000 MATIC)"

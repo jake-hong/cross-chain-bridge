@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🔷 Starting Local Ethereum Network (Ganache)"
+echo "Starting Local Ethereum Network (Ganache)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 ganache \
@@ -17,14 +17,14 @@ ganache \
   --deterministic
 
 echo ""
-echo "✅ Ethereum Local Network Information:"
+echo "Ethereum Local Network Information:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🌐 Network Name: Ethereum Local"
-echo "🔗 Chain ID: 1337"
-echo "🌍 RPC URL: http://localhost:8545"
-echo "💰 Native Token: ETH"
+echo "Network Name: Ethereum Local"
+echo "Chain ID: 1337"
+echo "RPC URL: http://localhost:8545"
+echo "Native Token: ETH"
 echo ""
-echo "👤 Test Accounts:"
+echo "Test Accounts:"
 echo "   Account #0: 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 (1000 ETH)"
 echo "   Account #1: 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 (1000 ETH)"
 echo "   Account #2: 0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc (1000 ETH)"
