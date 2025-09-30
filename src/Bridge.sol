@@ -106,9 +106,13 @@ contract Bridge {
         );
     }
 
-    // ============ Unlock Functions ============
+    // ============ Complete Bridge Transfer ============
 
-    function unlockTokens(
+    /**
+     * @dev Completes a cross-chain transfer by either unlocking tokens (origin chain)
+     * or minting wrapped tokens (destination chain) based on validator signatures
+     */
+    function completeBridgeTransfer(
         address token,
         address user,
         uint256 amount,

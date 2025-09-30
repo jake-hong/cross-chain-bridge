@@ -105,8 +105,8 @@ contract BridgeIntegrationTest is Test {
         signatures[0] = abi.encodePacked(r1, s1, v1);
         signatures[1] = abi.encodePacked(r2, s2, v2);
 
-        // Step 3: Unlock/mint tokens on Polygon
-        polygonBridge.unlockTokens(
+        // Step 3: Complete transfer on Polygon (mint wrapped tokens)
+        polygonBridge.completeBridgeTransfer(
             address(mockToken),
             user2,
             TRANSFER_AMOUNT,
@@ -171,10 +171,10 @@ contract BridgeIntegrationTest is Test {
         signatures[0] = abi.encodePacked(r1, s1, v1);
         signatures[1] = abi.encodePacked(r2, s2, v2);
 
-        // Step 4: Unlock tokens on Ethereum
+        // Step 4: Complete transfer on Ethereum (unlock original tokens)
         uint256 user1BalanceBefore = mockToken.balanceOf(user1);
 
-        ethereumBridge.unlockTokens(
+        ethereumBridge.completeBridgeTransfer(
             address(mockToken),
             user1,
             TRANSFER_AMOUNT,
@@ -211,7 +211,7 @@ contract BridgeIntegrationTest is Test {
         signatures[1] = abi.encodePacked(r2, s2, v2);
 
         // Should work with valid signatures
-        polygonBridge.unlockTokens(
+        polygonBridge.completeBridgeTransfer(
             address(mockToken),
             user2,
             TRANSFER_AMOUNT,
@@ -221,7 +221,7 @@ contract BridgeIntegrationTest is Test {
 
         // Should fail if trying to use same transaction ID again
         vm.expectRevert("Transaction already processed");
-        polygonBridge.unlockTokens(
+        polygonBridge.completeBridgeTransfer(
             address(mockToken),
             user2,
             TRANSFER_AMOUNT,
@@ -253,7 +253,7 @@ contract BridgeIntegrationTest is Test {
 
         // Should fail with insufficient signatures
         vm.expectRevert("Insufficient signatures");
-        polygonBridge.unlockTokens(
+        polygonBridge.completeBridgeTransfer(
             address(mockToken),
             user2,
             TRANSFER_AMOUNT,
