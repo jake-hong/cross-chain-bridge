@@ -5,12 +5,33 @@ import { CHAIN_CONFIGS, ChainConfig } from '../config/chains';
 import { TransactionBuilder } from './TransactionBuilder';
 import { TransactionSigner } from './TransactionSigner';
 import { TransactionSubmitter } from './TransactionSubmitter';
+import { TransactionQueue } from '../queue/TransactionQueue';
+import { QueueProcessor } from '../queue/QueueProcessor';
 
 export class RelayerService {
   private listeners: Map<string, EventListener> = new Map();
   private signers: Map<number, TransactionSigner> = new Map();
   private submitters: Map<number, TransactionSubmitter> = new Map();
   private providers: Map<number, ethers.JsonRpcProvider> = new Map();
+  private queue: TransactionQueue;
+  private processor: QueueProcessor;
+
+  constructor() {
+    this.queue = new TransactionQueue();
+
+    // Initialize processor with default config (will be updated in start())
+    this.processor = new QueueProcessor(
+      this.queue,
+      new Map(),
+      new Map(),
+      {
+        retryDelayMs: 5000,
+        maxRetries: 3,
+        processingIntervalMs: 1000,
+        cleanupIntervalMs: 60000,
+      }
+    );
+  }
 
   async start(): Promise<void> {
     console.log('Starting Relayer Service...');
@@ -19,6 +40,12 @@ export class RelayerService {
     if (!relayerPrivateKey) {
       throw new Error('RELAYER_PRIVATE_KEY not set in environment');
     }
+
+    // Read config from environment
+    const retryDelayMs = parseInt(process.env.RETRY_DELAY_MS || '5000', 10);
+    const maxRetries = parseInt(process.env.RETRY_ATTEMPTS || '3', 10);
+    const processingIntervalMs = parseInt(process.env.PROCESSING_INTERVAL_MS || '1000', 10);
+    const cleanupIntervalMs = parseInt(process.env.CLEANUP_INTERVAL_MS || '60000', 10);
 
     // Initialize providers, signers, and submitters for all chains
     for (const [chainName, config] of Object.entries(CHAIN_CONFIGS)) {
@@ -48,12 +75,36 @@ export class RelayerService {
       await listener.start(this.handleEvent.bind(this));
     }
 
+    // Initialize and start queue processor
+    this.processor = new QueueProcessor(
+      this.queue,
+      this.signers,
+      this.submitters,
+      {
+        retryDelayMs,
+        maxRetries,
+        processingIntervalMs,
+        cleanupIntervalMs,
+      }
+    );
+    this.processor.start();
+
     console.log('Relayer Service started successfully');
+
+    // Log queue stats periodically
+    setInterval(() => {
+      const stats = this.processor.getStats();
+      console.log('Queue stats:', stats);
+    }, 30000); // Every 30 seconds
   }
 
   async stop(): Promise<void> {
     console.log('Stopping Relayer Service...');
 
+    // Stop queue processor
+    this.processor.stop();
+
+    // Stop event listeners
     for (const listener of this.listeners.values()) {
       await listener.stop();
     }
@@ -97,34 +148,13 @@ export class RelayerService {
       // Build transaction from event
       const tx = TransactionBuilder.fromLockedEvent(event);
 
-      // Get signer for source chain to sign the transaction
-      const signer = this.signers.get(event.sourceChainId);
-      if (!signer) {
-        throw new Error(`No signer found for chain ${event.sourceChainId}`);
-      }
+      // Add to queue for processing
+      const maxRetries = parseInt(process.env.RETRY_ATTEMPTS || '3', 10);
+      this.queue.add(tx, maxRetries);
 
-      // Sign the transaction
-      const signature = await signer.signTransaction(tx);
-      console.log('Transaction signed:', signature.slice(0, 20) + '...');
-
-      // Get submitter for target chain
-      const submitter = this.submitters.get(event.targetChainId);
-      if (!submitter) {
-        throw new Error(`No submitter found for chain ${event.targetChainId}`);
-      }
-
-      // Submit transaction to destination chain
-      const result = await submitter.submitTransaction(tx, [signature]);
-
-      if (result.success) {
-        console.log('Bridge transfer completed successfully:', result.txHash);
-      } else {
-        console.error('Bridge transfer failed:', result.error);
-        // TODO: Add to retry queue
-      }
+      console.log(`Transaction added to queue: ${tx.transactionId}`);
     } catch (error) {
       console.error('Error processing TokensLocked event:', error);
-      // TODO: Add to retry queue
     }
   }
 }
