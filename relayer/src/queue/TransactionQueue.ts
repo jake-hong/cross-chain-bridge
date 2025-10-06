@@ -1,4 +1,5 @@
 import { BridgeTransaction } from '../services/TransactionBuilder';
+import { TransactionRepository } from '../database/TransactionRepository';
 
 export enum TransactionStatus {
   PENDING = 'pending',
@@ -22,6 +23,14 @@ export interface QueuedTransaction {
 export class TransactionQueue {
   private queue: Map<string, QueuedTransaction> = new Map();
   private processingIds: Set<string> = new Set();
+  private repository?: TransactionRepository;
+
+  /**
+   * Set database repository
+   */
+  setRepository(repository: TransactionRepository): void {
+    this.repository = repository;
+  }
 
   /**
    * Add a transaction to the queue
@@ -48,6 +57,14 @@ export class TransactionQueue {
 
     this.queue.set(id, queuedTx);
     console.log(`Transaction ${id} added to queue`);
+
+    // Save to database if repository is available
+    if (this.repository) {
+      this.repository.save(queuedTx).catch((err) => {
+        console.error('Error saving transaction to database:', err);
+      });
+    }
+
     return queuedTx;
   }
 
@@ -91,13 +108,20 @@ export class TransactionQueue {
       tx.updatedAt = Date.now();
       this.processingIds.add(id);
       this.queue.set(id, tx);
+
+      // Update in database
+      if (this.repository) {
+        this.repository.save(tx).catch((err) => {
+          console.error('Error updating transaction in database:', err);
+        });
+      }
     }
   }
 
   /**
    * Mark transaction as completed
    */
-  markCompleted(id: string): void {
+  markCompleted(id: string, completedTxHash?: string): void {
     const tx = this.queue.get(id);
     if (tx) {
       tx.status = TransactionStatus.COMPLETED;
@@ -105,6 +129,13 @@ export class TransactionQueue {
       this.processingIds.delete(id);
       this.queue.set(id, tx);
       console.log(`Transaction ${id} marked as completed`);
+
+      // Update in database
+      if (this.repository) {
+        this.repository.updateStatus(id, TransactionStatus.COMPLETED, completedTxHash).catch((err) => {
+          console.error('Error updating transaction in database:', err);
+        });
+      }
     }
   }
 
@@ -130,6 +161,13 @@ export class TransactionQueue {
       }
 
       this.queue.set(id, tx);
+
+      // Update in database
+      if (this.repository) {
+        this.repository.save(tx).catch((err) => {
+          console.error('Error updating transaction in database:', err);
+        });
+      }
     }
   }
 

@@ -118,7 +118,7 @@ export class QueueProcessor {
       const result = await submitter.submitTransaction(tx, [signature]);
 
       if (result.success) {
-        this.queue.markCompleted(queuedTx.id);
+        this.queue.markCompleted(queuedTx.id, result.txHash);
         console.log(`Transaction ${queuedTx.id} completed: ${result.txHash}`);
       } else {
         throw new Error(result.error || 'Transaction submission failed');

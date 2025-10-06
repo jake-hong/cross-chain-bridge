@@ -7,6 +7,9 @@ import { TransactionSigner } from './TransactionSigner';
 import { TransactionSubmitter } from './TransactionSubmitter';
 import { TransactionQueue } from '../queue/TransactionQueue';
 import { QueueProcessor } from '../queue/QueueProcessor';
+import { Database } from '../database/Database';
+import { TransactionRepository } from '../database/TransactionRepository';
+import { EventRepository } from '../database/EventRepository';
 
 export class RelayerService {
   private listeners: Map<string, EventListener> = new Map();
@@ -15,6 +18,9 @@ export class RelayerService {
   private providers: Map<number, ethers.JsonRpcProvider> = new Map();
   private queue: TransactionQueue;
   private processor: QueueProcessor;
+  private database?: Database;
+  private transactionRepo?: TransactionRepository;
+  private eventRepo?: EventRepository;
 
   constructor() {
     this.queue = new TransactionQueue();
@@ -39,6 +45,25 @@ export class RelayerService {
     const relayerPrivateKey = process.env.RELAYER_PRIVATE_KEY;
     if (!relayerPrivateKey) {
       throw new Error('RELAYER_PRIVATE_KEY not set in environment');
+    }
+
+    // Initialize database if enabled
+    const enableDatabase = process.env.ENABLE_DATABASE !== 'false';
+    if (enableDatabase) {
+      try {
+        this.database = new Database();
+        await this.database.initialize();
+
+        this.transactionRepo = new TransactionRepository(this.database);
+        this.eventRepo = new EventRepository(this.database);
+
+        // Set repository for queue
+        this.queue.setRepository(this.transactionRepo);
+
+        console.log('Database initialized successfully');
+      } catch (error) {
+        console.warn('Database initialization failed, continuing without database:', error);
+      }
     }
 
     // Read config from environment
@@ -110,6 +135,12 @@ export class RelayerService {
     }
 
     this.listeners.clear();
+
+    // Close database connection
+    if (this.database) {
+      await this.database.close();
+    }
+
     console.log('Relayer Service stopped');
   }
 
