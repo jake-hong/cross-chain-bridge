@@ -10,6 +10,8 @@ import { QueueProcessor } from '../queue/QueueProcessor';
 import { Database } from '../database/Database';
 import { TransactionRepository } from '../database/TransactionRepository';
 import { EventRepository } from '../database/EventRepository';
+import { KMSFactory } from '../kms/KMSFactory';
+import { KMSProvider } from '../kms/types';
 
 export class RelayerService {
   private listeners: Map<string, EventListener> = new Map();
@@ -42,9 +44,20 @@ export class RelayerService {
   async start(): Promise<void> {
     console.log('Starting Relayer Service...');
 
+    // Initialize KMS
+    const useKMS = process.env.USE_KMS === 'true';
+    let kms: KMSProvider | undefined;
+
+    if (useKMS) {
+      console.log('Initializing KMS...');
+      kms = KMSFactory.fromEnv();
+      console.log('KMS initialized successfully');
+    }
+
+    // Get relayer private key (from KMS or env)
     const relayerPrivateKey = process.env.RELAYER_PRIVATE_KEY;
-    if (!relayerPrivateKey) {
-      throw new Error('RELAYER_PRIVATE_KEY not set in environment');
+    if (!useKMS && !relayerPrivateKey) {
+      throw new Error('RELAYER_PRIVATE_KEY not set in environment (or enable KMS)');
     }
 
     // Initialize database if enabled
@@ -77,7 +90,14 @@ export class RelayerService {
       const provider = new ethers.JsonRpcProvider(config.rpcUrl);
       this.providers.set(config.chainId, provider);
 
-      const signer = new TransactionSigner(relayerPrivateKey, provider);
+      // Create signer (with KMS or direct key)
+      let signer: TransactionSigner;
+      if (useKMS && kms) {
+        const keyId = `${chainName}-validator-key`;
+        signer = new TransactionSigner(kms, provider, keyId);
+      } else {
+        signer = new TransactionSigner(relayerPrivateKey!, provider);
+      }
       this.signers.set(config.chainId, signer);
 
       const submitter = new TransactionSubmitter(
@@ -87,7 +107,8 @@ export class RelayerService {
       );
       this.submitters.set(config.chainId, submitter);
 
-      console.log(`Initialized signer for ${chainName} (${config.chainId}): ${signer.getAddress()}`);
+      const address = await signer.getAddress();
+      console.log(`Initialized signer for ${chainName} (${config.chainId}): ${address}`);
 
       // Initialize event listeners
       const listener = new EventListener(config);

@@ -32,10 +32,11 @@ export class TransactionSubmitter {
     signatures: string[]
   ): Promise<SubmitResult> {
     try {
+      const wallet = await this.signer.getWalletInstance();
       const bridge = new ethers.Contract(
         this.bridgeAddress,
         BridgeABI,
-        this.signer.getWallet()
+        wallet
       );
 
       console.log('Submitting transaction:', {
@@ -88,10 +89,11 @@ export class TransactionSubmitter {
     tx: BridgeTransaction,
     signatures: string[]
   ): Promise<bigint> {
+    const wallet = await this.signer.getWalletInstance();
     const bridge = new ethers.Contract(
       this.bridgeAddress,
       BridgeABI,
-      this.signer.getWallet()
+      wallet
     );
 
     const gasEstimate = await bridge.completeBridgeTransfer.estimateGas(
