@@ -58,6 +58,34 @@ npm start
 - **Database**: bridge_relayer
 - **User/Password**: postgres/postgres
 
+## KMS Key Management
+
+### Store a new key in Vault
+
+```bash
+# Generate and store a new key
+npm run store-key ethereum
+
+# Or use an existing private key
+npm run store-key ethereum 0x1234...
+```
+
+### List all keys
+
+```bash
+npm run list-keys
+```
+
+### Rotate a key
+
+```bash
+# Rotate key in Vault only
+npm run rotate-key ethereum
+
+# Rotate key and update Bridge contract
+npm run rotate-key ethereum --update-bridge
+```
+
 ## Architecture
 
 ```
