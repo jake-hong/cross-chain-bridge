@@ -60,7 +60,34 @@ npm start
 
 ## KMS Key Management
 
-### Store a new key in Vault
+### Supported KMS Providers
+
+- **Vault** - HashiCorp Vault (recommended for self-hosted)
+- **AWS** - AWS Secrets Manager + KMS (recommended for cloud)
+- **Local** - In-memory storage (development only)
+
+### Configuration
+
+Set `KMS_PROVIDER` in `.env`:
+
+```bash
+# For Vault
+KMS_PROVIDER=vault
+VAULT_ADDR=http://localhost:8200
+VAULT_TOKEN=dev-root-token
+
+# For AWS
+KMS_PROVIDER=aws
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_KMS_KEY_ID=your-kms-key-id  # Optional: for encryption at rest
+
+# For Local (dev only)
+KMS_PROVIDER=local
+```
+
+### Store a new key
 
 ```bash
 # Generate and store a new key
@@ -79,7 +106,7 @@ npm run list-keys
 ### Rotate a key
 
 ```bash
-# Rotate key in Vault only
+# Rotate key in KMS only
 npm run rotate-key ethereum
 
 # Rotate key and update Bridge contract

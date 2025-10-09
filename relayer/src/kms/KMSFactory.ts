@@ -1,6 +1,7 @@
 import { KMSProvider, KMSConfig } from './types';
 import { VaultKMSProvider } from './VaultKMSProvider';
 import { LocalKMSProvider } from './LocalKMSProvider';
+import { AWSKMSProvider } from './AWSKMSProvider';
 
 export class KMSFactory {
   /**
@@ -14,12 +15,15 @@ export class KMSFactory {
         }
         return new VaultKMSProvider(config.vault);
 
+      case 'aws':
+        if (!config.aws) {
+          throw new Error('AWS configuration is required for AWS KMS provider');
+        }
+        return new AWSKMSProvider(config.aws);
+
       case 'local':
         console.warn('Using LocalKMSProvider - NOT SECURE FOR PRODUCTION!');
         return new LocalKMSProvider();
-
-      case 'aws':
-        throw new Error('AWS KMS provider not yet implemented');
 
       default:
         throw new Error(`Unknown KMS provider: ${config.provider}`);
@@ -45,6 +49,19 @@ export class KMSFactory {
 
       if (!config.vault.token) {
         throw new Error('VAULT_TOKEN is required when using Vault KMS provider');
+      }
+    }
+
+    if (provider === 'aws') {
+      config.aws = {
+        region: process.env.AWS_REGION || 'us-east-1',
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        kmsKeyId: process.env.AWS_KMS_KEY_ID,
+      };
+
+      if (!config.aws.region) {
+        throw new Error('AWS_REGION is required when using AWS KMS provider');
       }
     }
 

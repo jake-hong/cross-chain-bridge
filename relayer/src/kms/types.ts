@@ -31,7 +31,15 @@ export interface VaultConfig {
   namespace?: string;
 }
 
+export interface AWSConfig {
+  region: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  kmsKeyId?: string;
+}
+
 export interface KMSConfig {
   provider: 'vault' | 'aws' | 'local';
   vault?: VaultConfig;
+  aws?: AWSConfig;
 }
