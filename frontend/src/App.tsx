@@ -1,4 +1,5 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { BridgeForm } from './components/BridgeForm'
 import './App.css'
 
 function App() {
@@ -8,6 +9,9 @@ function App() {
         <h1>Cross-Chain Bridge</h1>
         <ConnectButton />
       </header>
+      <main>
+        <BridgeForm />
+      </main>
     </div>
   )
 }
