@@ -43,6 +43,17 @@
   color: white;
   font-size: 1rem;
   font-family: inherit;
+  box-sizing: border-box;
+}
+
+.amount-input::-webkit-inner-spin-button,
+.amount-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.amount-input[type='number'] {
+  -moz-appearance: textfield;
 }
 
 .chain-select:focus,

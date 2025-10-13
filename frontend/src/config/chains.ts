@@ -1,4 +1,5 @@
 import { defineChain } from 'viem';
+import { sepolia, polygon } from 'viem/chains';
 
 export const localhost1 = defineChain({
   id: 1337,
@@ -26,4 +27,5 @@ export const localhost2 = defineChain({
   },
 });
 
-export const supportedChains = [localhost1, localhost2];
+// 로컬 체인이 실행 중이지 않을 때는 테스트넷 사용
+export const supportedChains = [sepolia, polygon];

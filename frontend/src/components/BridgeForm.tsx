@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { useAccount, useChainId } from 'wagmi';
+import { Transaction } from '../types/transaction';
 import './BridgeForm.css';
 
-export function BridgeForm() {
+interface BridgeFormProps {
+  onTransactionCreated: (tx: Transaction) => void;
+}
+
+export function BridgeForm({ onTransactionCreated }: BridgeFormProps) {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
 
@@ -15,8 +20,20 @@ export function BridgeForm() {
       return;
     }
 
-    console.log('Transfer:', { amount, targetChainId, from: chainId });
-    // TODO: Implement bridge transfer logic
+    // Create mock transaction for demo
+    const mockTx: Transaction = {
+      hash: '0x' + Math.random().toString(16).substring(2, 66),
+      status: 'pending',
+      fromChain: chainId,
+      toChain: targetChainId,
+      amount,
+      timestamp: Date.now(),
+    };
+
+    onTransactionCreated(mockTx);
+    setAmount('');
+
+    // TODO: Implement actual bridge transfer logic
   };
 
   if (!isConnected) {
