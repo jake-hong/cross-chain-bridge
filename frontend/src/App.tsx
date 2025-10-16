@@ -2,22 +2,39 @@ import { useState } from 'react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { BridgeForm } from './components/BridgeForm'
 import { TransactionStatus } from './components/TransactionStatus'
+import { TransactionHistory } from './components/TransactionHistory'
 import { Transaction } from './types/transaction'
 import './App.css'
 
 function App() {
   const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(null)
+  const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([])
 
   const handleTransactionCreated = (tx: Transaction) => {
     setCurrentTransaction(tx)
+    setTransactionHistory((prev) => [tx, ...prev])
 
     // Simulate transaction status updates
     setTimeout(() => {
-      setCurrentTransaction((prev) => prev ? { ...prev, status: 'confirming' } : null)
+      setCurrentTransaction((prev) => {
+        if (!prev) return null
+        const updated = { ...prev, status: 'confirming' as const }
+        setTransactionHistory((history) =>
+          history.map((t) => (t.hash === tx.hash ? updated : t))
+        )
+        return updated
+      })
     }, 2000)
 
     setTimeout(() => {
-      setCurrentTransaction((prev) => prev ? { ...prev, status: 'completed' } : null)
+      setCurrentTransaction((prev) => {
+        if (!prev) return null
+        const updated = { ...prev, status: 'completed' as const }
+        setTransactionHistory((history) =>
+          history.map((t) => (t.hash === tx.hash ? updated : t))
+        )
+        return updated
+      })
     }, 5000)
   }
 
@@ -30,6 +47,7 @@ function App() {
       <main>
         <BridgeForm onTransactionCreated={handleTransactionCreated} />
         <TransactionStatus transaction={currentTransaction} />
+        <TransactionHistory transactions={transactionHistory} />
       </main>
     </div>
   )
