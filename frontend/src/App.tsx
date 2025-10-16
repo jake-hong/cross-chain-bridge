@@ -3,7 +3,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { BridgeForm } from './components/BridgeForm'
 import { TransactionStatus } from './components/TransactionStatus'
 import { TransactionHistory } from './components/TransactionHistory'
-import { Transaction } from './types/transaction'
+import type { Transaction } from './types.ts'
 import './App.css'
 
 function App() {

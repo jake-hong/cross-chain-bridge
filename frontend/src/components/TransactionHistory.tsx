@@ -1,4 +1,4 @@
-import { Transaction } from '../types/transaction';
+import type { Transaction } from '../types.ts';
 import './TransactionHistory.css';
 
 interface TransactionHistoryProps {

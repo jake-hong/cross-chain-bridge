@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAccount, useChainId } from 'wagmi';
-import { Transaction } from '../types/transaction';
+import type { Transaction } from '../types.ts';
 import './BridgeForm.css';
 
 interface BridgeFormProps {
