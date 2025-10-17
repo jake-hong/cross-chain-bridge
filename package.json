@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "chain:eth": "node scripts/start-ganache-eth.js",
+    "chain:poly": "node scripts/start-ganache-poly.js",
+    "chain:all": "npm run chain:eth & npm run chain:poly",
+    "deploy:eth": "forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --broadcast",
+    "deploy:poly": "forge script script/Deploy.s.sol --rpc-url http://localhost:8546 --broadcast",
+    "deploy:all": "npm run deploy:eth && npm run deploy:poly"
+  },
+  "devDependencies": {
+    "ganache": "^7.9.2"
+  }
+}
