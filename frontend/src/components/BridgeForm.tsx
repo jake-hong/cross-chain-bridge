@@ -1,6 +1,9 @@
-import { useState } from 'react';
-import { useAccount, useChainId } from 'wagmi';
+import { useState, useEffect } from 'react';
+import { useAccount, useChainId, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { parseEther } from 'viem';
 import type { Transaction } from '../types.ts';
+import { contracts } from '../config/contracts';
+import BridgeABI from '../abis/Bridge.json';
 import './BridgeForm.css';
 
 interface BridgeFormProps {
@@ -14,26 +17,54 @@ export function BridgeForm({ onTransactionCreated }: BridgeFormProps) {
   const [amount, setAmount] = useState('');
   const [targetChainId, setTargetChainId] = useState<number>(chainId === 1337 ? 1338 : 1337);
 
+  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  // When hash is received, create transaction
+  useEffect(() => {
+    if (hash && amount) {
+      const tx: Transaction = {
+        hash,
+        status: 'pending',
+        fromChain: chainId,
+        toChain: targetChainId,
+        amount,
+        timestamp: Date.now(),
+      };
+      onTransactionCreated(tx);
+    }
+  }, [hash]);
+
   const handleTransfer = async () => {
-    if (!isConnected || !amount) {
+    if (!isConnected || !amount || !address) {
       alert('Please connect wallet and enter amount');
       return;
     }
 
-    // Create mock transaction for demo
-    const mockTx: Transaction = {
-      hash: '0x' + Math.random().toString(16).substring(2, 66),
-      status: 'pending',
-      fromChain: chainId,
-      toChain: targetChainId,
-      amount,
-      timestamp: Date.now(),
-    };
+    try {
+      // Get bridge address based on current chain
+      const bridgeAddress = chainId === 1337
+        ? contracts.ethereum.bridge
+        : contracts.polygon.bridge;
 
-    onTransactionCreated(mockTx);
-    setAmount('');
+      // Call lockTokens on the bridge contract
+      writeContract({
+        address: bridgeAddress,
+        abi: BridgeABI.abi,
+        functionName: 'lockTokens',
+        args: [
+          contracts.ethereum.mockToken, // token address
+          parseEther(amount), // amount
+          BigInt(targetChainId), // target chain ID
+        ],
+        value: parseEther(amount), // send ETH with transaction
+      });
 
-    // TODO: Implement actual bridge transfer logic
+      setAmount('');
+    } catch (error) {
+      console.error('Transaction failed:', error);
+      alert('Transaction failed. See console for details.');
+    }
   };
 
   if (!isConnected) {
@@ -83,9 +114,12 @@ export function BridgeForm({ onTransactionCreated }: BridgeFormProps) {
       <button
         onClick={handleTransfer}
         className="transfer-button"
-        disabled={!amount || chainId === targetChainId}
+        disabled={!amount || chainId === targetChainId || isPending || isConfirming}
       >
-        {chainId === targetChainId ? 'Select different chain' : 'Transfer'}
+        {isPending && 'Waiting for approval...'}
+        {isConfirming && 'Confirming...'}
+        {!isPending && !isConfirming && chainId === targetChainId && 'Select different chain'}
+        {!isPending && !isConfirming && chainId !== targetChainId && 'Transfer'}
       </button>
     </div>
   );
