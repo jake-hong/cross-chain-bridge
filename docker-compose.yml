@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bridge-postgres
+    environment:
+      POSTGRES_DB: bridge_relayer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./relayer/src/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bridge-network
+
+  # HashiCorp Vault
+  vault:
+    image: hashicorp/vault:latest
+    container_name: bridge-vault
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - "8200:8200"
+    cap_add:
+      - IPC_LOCK
+    command: server -dev
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - bridge-network
+
+  # Relayer Service
+  relayer:
+    build:
+      context: ./relayer
+      dockerfile: Dockerfile
+    container_name: bridge-relayer
+    environment:
+      # Network RPC URLs
+      ETH_RPC_URL: ${ETH_RPC_URL:-http://host.docker.internal:8545}
+      POLY_RPC_URL: ${POLY_RPC_URL:-http://host.docker.internal:8546}
+
+      # Contract Addresses
+      ETH_BRIDGE_ADDRESS: ${ETH_BRIDGE_ADDRESS:-0x5b1869D9A4C187F2EAa108f3062412ecf0526b24}
+      POLY_BRIDGE_ADDRESS: ${POLY_BRIDGE_ADDRESS:-0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab}
+
+      # Database
+      ENABLE_DATABASE: true
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: bridge_relayer
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+
+      # KMS Configuration
+      USE_KMS: true
+      KMS_PROVIDER: vault
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: dev-root-token
+
+      # Relayer Configuration
+      REQUIRED_SIGNATURES: 2
+      CONFIRMATION_BLOCKS: 1
+      RETRY_ATTEMPTS: 3
+      RETRY_DELAY_MS: 5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - bridge-network
+    restart: unless-stopped
+
+  # Frontend (Optional - for development)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bridge-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_ETH_BRIDGE_ADDRESS: ${ETH_BRIDGE_ADDRESS:-0x5b1869D9A4C187F2EAa108f3062412ecf0526b24}
+      VITE_POLY_BRIDGE_ADDRESS: ${POLY_BRIDGE_ADDRESS:-0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab}
+    networks:
+      - bridge-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  bridge-network:
+    driver: bridge
