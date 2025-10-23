@@ -18,7 +18,7 @@ export function BridgeForm({ onTransactionCreated }: BridgeFormProps) {
   const [targetChainId, setTargetChainId] = useState<number>(chainId === 1337 ? 1338 : 1337);
 
   const { writeContract, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
 
   // When hash is received, create transaction
   useEffect(() => {
